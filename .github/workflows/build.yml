@@ -14,7 +14,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-python-version: '3.11'
+          python-version: '3.11'
 
       - name: Install Flet CLI Dependencies
         run: |
@@ -34,11 +34,10 @@ jobs:
 
       - name: Run Build Package
         run: |
-          flet build apk --no-public-signing
+          flet build apk
 
       - name: Upload Finished APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Simple-Ledger-Android-APK
           path: build/apk/*.apk
-          
