@@ -3,7 +3,7 @@ import datetime
 from flet import (
     app, Page, Text, TextField, Dropdown, dropdown, ElevatedButton, 
     IconButton, Row, Column, Container, DataTable, DataColumn, 
-    DataRow, DataCell, Colors, FilePicker, FilePickerResultEvent,
+    DataRow, DataCell, Colors, FilePicker,
     AlertDialog, TextButton, icons, ScrollMode, MainAxisAlignment, CrossAxisAlignment
 )
 
@@ -16,7 +16,7 @@ def main(page: Page):
     # State variables
     current_person = None
     
-    # Fetch initial ledger data from client storage (localStorage equivalent)
+    # Fetch initial ledger data from client storage
     if page.client_storage.contains_key("ledger"):
         try:
             ledger_data = json.loads(page.client_storage.get("ledger"))
@@ -153,7 +153,7 @@ def main(page: Page):
             allowed_extensions=["json"]
         )
 
-    def on_export_result(e: FilePickerResultEvent):
+    def on_export_result(e):
         if e.path:
             with open(e.path, "w") as f:
                 json.dump(ledger_data, f, indent=2)
@@ -161,7 +161,7 @@ def main(page: Page):
     def import_data(e):
         file_picker_import.pick_files(allowed_extensions=["json"])
 
-    def on_import_result(e: FilePickerResultEvent):
+    def on_import_result(e):
         nonlocal ledger_data, current_person
         if e.files:
             file_path = e.files[0].path
