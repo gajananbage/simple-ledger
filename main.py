@@ -3,7 +3,7 @@ import datetime
 from flet import (
     app, Page, Text, TextField, Dropdown, dropdown, ElevatedButton, 
     IconButton, Row, Column, Container, DataTable, DataColumn, 
-    DataRow, DataCell, colors, FilePicker, FilePickerResultEvent,
+    DataRow, DataCell, Colors, FilePicker, FilePickerResultEvent,
     AlertDialog, TextButton, icons, ScrollMode, MainAxisAlignment, CrossAxisAlignment
 )
 
@@ -148,8 +148,6 @@ def main(page: Page):
     def export_data(e):
         if not ledger_data:
             return
-        # In Flet apps, creating an accessible local download for Mobile requires 
-        # file picker paths. For standard cross-platform implementation, we output a save picker.
         file_picker_export.save_file(
             file_name=f"ledger_backup_{datetime.date.today().isoformat()}.json",
             allowed_extensions=["json"]
@@ -191,7 +189,6 @@ def main(page: Page):
         keys = list(ledger_data.keys())
         if query:
             keys = [k for k in keys if query in k.lower()]
-            # Simple sorting matching the original logic
             keys.sort(key=lambda k: (0 if k.lower() == query else 1, -get_balance(k)))
         else:
             keys.sort(key=lambda k: -get_balance(k))
@@ -201,9 +198,8 @@ def main(page: Page):
         else:
             for k in keys:
                 b = get_balance(k)
-                bal_color = colors.GREEN if b >= 0 else colors.RED
+                bal_color = Colors.GREEN if b >= 0 else Colors.RED
                 
-                # Closures to hold correct 'k' reference
                 def make_click(name): return lambda _: open_person(name)
                 def make_delete(name): return lambda _: delete_person(name)
 
@@ -219,7 +215,7 @@ def main(page: Page):
                         ),
                         IconButton(
                             icon=icons.DELETE_FOREGROUND, 
-                            icon_color=colors.RED, 
+                            icon_color=Colors.RED, 
                             on_click=make_delete(k)
                         )
                     ],
@@ -235,7 +231,7 @@ def main(page: Page):
         running_bal = 0
         for i, e in enumerate(entries):
             running_bal += e['a'] if e['t'] else -e['a']
-            bal_color = colors.GREEN if running_bal >= 0 else colors.RED
+            bal_color = Colors.GREEN if running_bal >= 0 else Colors.RED
             
             def make_del_entry(idx): return lambda _: delete_entry(idx)
 
@@ -246,17 +242,16 @@ def main(page: Page):
                     DataCell(Text(str(round(e['a'])) if e['t'] else "")),
                     DataCell(Text(str(round(e['a'])) if not e['t'] else "")),
                     DataCell(Text(fmt_money(running_bal), color=bal_color, weight="bold")),
-                    DataCell(IconButton(icon=icons.CLOSE, icon_color=colors.RED_400, on_click=make_del_entry(i)))
+                    DataCell(IconButton(icon=icons.CLOSE, icon_color=Colors.RED_400, on_click=make_del_entry(i)))
                 ])
             )
         
         balance_summary.value = fmt_money(running_bal)
-        balance_summary.color = colors.GREEN if running_bal >= 0 else colors.RED
+        balance_summary.color = Colors.GREEN if running_bal >= 0 else Colors.RED
         page.update()
 
-    # --- UI Architecture Layout Layout ---
+    # --- UI Architecture Layout ---
     
-    # Top elements
     search_input = TextField(label="Search name...", size=30, autofocus=True, on_change=on_search_change)
     top_bar = Row(
         controls=[
@@ -271,7 +266,6 @@ def main(page: Page):
 
     people_container = Column(horizontal_alignment=CrossAxisAlignment.CENTER)
 
-    # Detailed view for selected person (initially hidden)
     person_title = Text("", size=22, weight="bold")
     desc_input = TextField(label="Note (optional)", width=200)
     amt_input = TextField(label="Amt", width=100, keyboard_type="number")
@@ -303,7 +297,7 @@ def main(page: Page):
         controls=[
             Row([
                 person_title, 
-                IconButton(icon=icons.DELETE, icon_color=colors.RED, on_click=lambda _: delete_person(current_person))
+                IconButton(icon=icons.DELETE, icon_color=Colors.RED, on_click=lambda _: delete_person(current_person))
             ], alignment=MainAxisAlignment.CENTER),
             Row([desc_input, amt_input, type_dropdown, ElevatedButton("Add", on_click=save_entry)], alignment=MainAxisAlignment.CENTER, wrap=True),
             Row([Text("Balance: ", size=18), balance_summary], alignment=MainAxisAlignment.CENTER),
@@ -311,15 +305,14 @@ def main(page: Page):
         ]
     )
 
-    # Bootstrapping View
     page.add(
         Column(
             controls=[
                 Text("Simple Ledger", size=28, weight="bold"),
                 top_bar,
-                Container(height=1, bgcolor=colors.GREY_300),
+                Container(height=1, bgcolor=Colors.GREY_300),
                 people_container,
-                Container(height=1, bgcolor=colors.GREY_300),
+                Container(height=1, bgcolor=Colors.GREY_300),
                 main_view
             ],
             horizontal_alignment=CrossAxisAlignment.CENTER,
@@ -327,7 +320,6 @@ def main(page: Page):
         )
     )
     
-    # Initialize people list
     update_people_list()
 
 app(target=main)
