@@ -101,11 +101,15 @@ def main(page: Page):
 
     def save_entry(e):
         if not amt_input.value:
+            page.open(AlertDialog(title=Text("कृपया रक्कम टाका!")))
             return
         try:
             amt = float(amt_input.value)
-            if amt <= 0: raise ValueError
+            if amt <= 0:
+                page.open(AlertDialog(title=Text("रक्कम शून्यपेक्षा मोठी असावी!")))
+                return
         except ValueError:
+            page.open(AlertDialog(title=Text("कृपया वैध संख्या टाका!")))
             return
 
         is_credit = type_dropdown.value == "1"
@@ -140,6 +144,7 @@ def main(page: Page):
     # --- Backup & Restore ---
     def export_data(e):
         if not ledger_data:
+            page.open(AlertDialog(title=Text("निर्यात करण्यासाठी कोणतेही डेटा नाही!")))
             return
         file_picker_export.save_file(
             file_name=f"ledger_backup_{datetime.date.today().isoformat()}.json",
@@ -148,8 +153,12 @@ def main(page: Page):
 
     def on_export_result(e):
         if e.path:
-            with open(e.path, "w") as f:
-                json.dump(ledger_data, f, indent=2)
+            try:
+                with open(e.path, "w") as f:
+                    json.dump(ledger_data, f, indent=2)
+                page.open(AlertDialog(title=Text("डेटा यशस्वीरित्या निर्यात केला!")))
+            except Exception as ex:
+                page.open(AlertDialog(title=Text(f"निर्यात त्रुटी: {str(ex)}")))
 
     def import_data(e):
         file_picker_import.pick_files(allowed_extensions=["json"])
@@ -161,13 +170,23 @@ def main(page: Page):
             try:
                 with open(file_path, "r") as f:
                     imported = json.load(f)
-                ledger_data = imported
-                save_to_storage()
-                current_person = None
-                main_view.visible = False
-                update_people_list()
-            except:
-                pass
+                
+                # Validate imported data structure
+                if isinstance(imported, dict):
+                    ledger_data = imported
+                    save_to_storage()
+                    current_person = None
+                    main_view.visible = False
+                    update_people_list()
+                    page.open(AlertDialog(title=Text("डेटा यशस्वीरित्या आयात केला!")))
+                else:
+                    page.open(AlertDialog(title=Text("अवैध डेटा स्वरूप!")))
+            except json.JSONDecodeError:
+                page.open(AlertDialog(title=Text("JSON फाइल वाचण्यात त्रुटी!")))
+            except FileNotFoundError:
+                page.open(AlertDialog(title=Text("फाइल सापडली नाही!")))
+            except Exception as ex:
+                page.open(AlertDialog(title=Text(f"आयात त्रुटी: {str(ex)}")))
 
     file_picker_export = FilePicker(on_result=on_export_result)
     file_picker_import = FilePicker(on_result=on_import_result)
@@ -228,7 +247,7 @@ def main(page: Page):
             keys.sort(key=lambda k: -get_balance(k))
 
         if not keys:
-            people_container.controls.append(Text("कोणतेही रेkकॉर्ड नाही", italic=True))
+            people_container.controls.append(Text("कोणतेही रेकॉर्ड नाही", italic=True))
         else:
             for k in keys:
                 b = get_balance(k)
@@ -268,13 +287,13 @@ def main(page: Page):
     def initialize_app():
         nonlocal ledger_data
         try:
-            # अँड्रॉइडला स्टोरेज लोड करण्यासाठी १ सेकंदाचा वेळ देणे जेणेकरून ते क्रॅश होणार नाही
+            # अँड्रॉइडला स्टोरेज लोड करण्यासाठी १ सेकंदाचा वेळ देणे जेणेकरून ते तयार होते
             time.sleep(1.0) 
             if page.client_storage.contains_key("ledger_data_key"):
                 raw = page.client_storage.get("ledger_data_key")
                 if raw:
                     ledger_data = json.loads(raw)
-        except:
+        except Exception:
             ledger_data = {}
         
         # आता UI स्क्रीनवर दाखवणे
