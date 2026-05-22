@@ -1,18 +1,19 @@
 [project]
 name = "simple_ledger"
-version = "0.1.0"
-description = "A Simple Ledger Application built with Python Flet"
+version = "1.0.0"
+description = "A Secure and Simple Ledger Application built with Python Flet"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "flet>=0.85.1",
+    "flet-runtime>=0.85.1",
 ]
 
 [tool.flet]
-app-name = "simple_ledger"
+app-name = "Simple Ledger"
 main-module = "main"
 
 [tool.flet.android]
-package-name = "com.flet.simple_ledger"
+package-name = "com.yourname.simple_ledger"
 version-code = 1
 version-name = "1.0.0"
