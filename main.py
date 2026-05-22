@@ -1,4 +1,5 @@
 import json
+import asyncio # असिंक्रोनस लोडसाठी आवश्यक
 import datetime
 from flet import (
     app, Page, Text, TextField, Dropdown, dropdown, ElevatedButton, 
@@ -14,12 +15,15 @@ def main(page: Page):
     page.scroll = ScrollMode.AUTO
 
     # स्टेट व्हेरिएबल्स
-    current_person = [None]  # Use list to allow modification in nested functions
+    current_person = [None]
     ledger_data = {}
 
-    # मुख्य लेआउट (UI कंट्रोलर)
-    main_layout = Column(horizontal_alignment=CrossAxisAlignment.CENTER, spacing=20)
-    page.add(main_layout)
+    # मुख्य लेआउट (UI एलिमेंट्स सुरुवातीलाच तयार करून ठेवले)
+    main_layout = Column(horizontal_alignment=CrossAxisAlignment.CENTER, spacing=20, visible=False)
+    
+    # ॲप लोड होईपर्यंत युझरला दिसणारा लोडिंग मेसेज
+    loading_text = Text("डेटा लोड होत आहे, कृपया थांबा...", size=18, color=Colors.BLUE_GREY)
+    page.add(loading_text, main_layout)
 
     def save_to_storage():
         try:
@@ -250,10 +254,8 @@ def main(page: Page):
             for k in keys:
                 b = get_balance(k)
                 bal_color = Colors.GREEN if b >= 0 else Colors.RED
-                def make_click(name): 
-                    return lambda _: open_person(name)
-                def make_delete(name): 
-                    return lambda _: delete_person(name)
+                def make_click(name): return lambda _: open_person(name)
+                def make_delete(name): return lambda _: delete_person(name)
                 people_container.controls.append(
                     Row([
                         ElevatedButton(
@@ -274,8 +276,7 @@ def main(page: Page):
         for i, e in enumerate(entries):
             running_bal += e['a'] if e['t'] else -e['a']
             bal_color = Colors.GREEN if running_bal >= 0 else Colors.RED
-            def make_del_entry(idx): 
-                return lambda _: delete_entry(idx)
+            def make_del_entry(idx): return lambda _: delete_entry(idx)
             ledger_table.rows.append(
                 DataRow(cells=[
                     DataCell(Text(e['d'], size=12)), 
@@ -290,18 +291,7 @@ def main(page: Page):
         balance_summary.color = Colors.GREEN if running_bal >= 0 else Colors.RED
         page.update()
 
-    # Load data from storage
-    try:
-        if page.client_storage.contains_key("ledger_data_key"):
-            raw = page.client_storage.get("ledger_data_key")
-            if raw:
-                loaded_data = json.loads(raw)
-                if isinstance(loaded_data, dict):
-                    ledger_data.update(loaded_data)
-    except Exception as e:
-        print(f"Error loading data: {e}")
-
-    # आता UI स्क्रीनवर दाखवणे
+    # लेआउट स्ट्रक्चर जोडणे
     main_layout.controls.extend([
         Text("सिंपल लेजर", size=28, weight="bold"),
         top_bar,
@@ -310,8 +300,27 @@ def main(page: Page):
         Container(height=1, bgcolor=Colors.GREY_300),
         main_view
     ])
-    
-    # Initial update
-    update_people_list()
+
+    # असिंक्रोनस पद्धतीने डेटा सुरक्षित लोड करणे (Non-blocking)
+    async def initialize_app_task():
+        await asyncio.sleep(0.5) # मोबाईल हार्डवेअर रेडी होण्यासाठी छोटासा पॉज
+        try:
+            if page.client_storage.contains_key("ledger_data_key"):
+                raw = page.client_storage.get("ledger_data_key")
+                if raw:
+                    loaded_data = json.loads(raw)
+                    if isinstance(loaded_data, dict):
+                        ledger_data.update(loaded_data)
+        except Exception as ex:
+            print(f"Load Error: {ex}")
+        
+        # लोड झाल्यावर UI दाखवणे आणि लोडिंग मेसेज लपवणे
+        loading_text.visible = False
+        main_layout.visible = True
+        update_people_list()
+        page.update()
+
+    # टास्क रन करणे
+    page.run_task(initialize_app_task)
 
 app(target=main)
