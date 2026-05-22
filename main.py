@@ -1,4 +1,5 @@
 import json
+import os
 import datetime
 from flet import (
     app, Page, Text, TextField, Dropdown, dropdown, ElevatedButton, 
@@ -17,22 +18,28 @@ def main(page: Page):
     current_person = None
     ledger_data = {}
 
-    # सुरक्षितपणे डेटा लोड करण्यासाठी ट्राय-एक्सेप्ट (Try-Except) ब्लॉक
+    # मोबाईल आणि डेस्कटॉप दोन्हीवर सुरक्षितपणे डेटा फाईल सेव्ह करण्यासाठी मार्ग (Path)
+    # Flet च्या नवीन व्हर्जनमध्ये हा सर्वात सुरक्षित मार्ग आहे
+    DATA_FILE = os.path.join(page.get_data_directory(), "ledger_data.json")
+
+    # फाईलधून डेटा लोड करणे
     try:
-        if page.client_storage and page.client_storage.contains_key("ledger"):
-            val = page.client_storage.get("ledger")
-            if val:
-                ledger_data = json.loads(val)
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, "r") as f:
+                content = f.read()
+                if content:
+                    ledger_data = json.loads(content)
     except Exception as e:
-        # जर काही एरर आली तर ती स्क्रीनवर दिसेल, ब्लँक स्क्रीन राहणार नाही
-        page.add(Text(f"Storage Error: {str(e)}", color=Colors.RED))
+        # एरर आल्यास स्क्रीनवर दिसेल, ब्लँक स्क्रीन राहणार नाही
+        page.add(Text(f"डेटा लोड करताना एरर आली: {str(e)}", color=Colors.RED))
         page.update()
 
     def save_to_storage():
         try:
-            page.client_storage.set("ledger", json.dumps(ledger_data))
+            with open(DATA_FILE, "w") as f:
+                json.dump(ledger_data, f, indent=2)
         except Exception as e:
-            page.snack_bar = AlertDialog(title=Text(f"Save Error: {str(e)}"))
+            page.snack_bar = AlertDialog(title=Text(f"सेव्ह करताना एरर आली: {str(e)}"))
             page.snack_bar.open = True
             page.update()
 
@@ -57,7 +64,7 @@ def main(page: Page):
             if not name:
                 return
             if name in ledger_data:
-                page.snack_bar = AlertDialog(title=Text("Name already exists!"))
+                page.snack_bar = AlertDialog(title=Text("नाव आधीपासूनच अस्तित्त्वात आहे!"))
                 page.snack_bar.open = True
                 page.update()
                 return
@@ -66,13 +73,13 @@ def main(page: Page):
             page.dialog.open = False
             open_person(name)
 
-        name_input = TextField(label="Name", autofocus=True)
+        name_input = TextField(label="नाव टाका", autofocus=True)
         page.dialog = AlertDialog(
-            title=Text("Enter Name"),
+            title=Text("नवीन नाव जोडा"),
             content=name_input,
             actions=[
-                TextButton("Cancel", on_click=close_dialog),
-                TextButton("Add", on_click=confirm_add)
+                TextButton("रद्द करा", on_click=close_dialog),
+                TextButton("जोडा", on_click=confirm_add)
             ]
         )
         page.dialog.open = True
@@ -95,11 +102,11 @@ def main(page: Page):
             update_people_list()
 
         page.dialog = AlertDialog(
-            title=Text("Confirm Delete"),
-            content=Text(f"Delete entire record for {name}?"),
+            title=Text("डिलिट करण्याची खात्री करा"),
+            content=Text(f"तुम्हाला नक्की {name} चा सर्व रेकॉर्ड डिलीट करायचा आहे का?"),
             actions=[
-                TextButton("Cancel", on_click=close_dialog),
-                TextButton("Delete", on_click=confirm_delete)
+                TextButton("रद्द करा", on_click=close_dialog),
+                TextButton("डिलीट करा", on_click=confirm_delete)
             ]
         )
         page.dialog.open = True
@@ -199,7 +206,7 @@ def main(page: Page):
             keys.sort(key=lambda k: -get_balance(k))
 
         if not keys:
-            people_container.controls.append(Text("No records yet", italic=True))
+            people_container.controls.append(Text("कोणतेही रेकॉर्ड उपलब्ध नाहीत", italic=True))
         else:
             for k in keys:
                 b = get_balance(k)
@@ -256,13 +263,13 @@ def main(page: Page):
         page.update()
 
     # --- UI Layout ---
-    search_input = TextField(label="Search name...", size=30, autofocus=True, on_change=on_search_change)
+    search_input = TextField(label="नाव शोधा...", size=30, autofocus=True, on_change=on_search_change)
     top_bar = Row(
         controls=[
             search_input,
-            ElevatedButton("+ New", on_click=add_new_person),
-            ElevatedButton("Backup", on_click=export_data),
-            ElevatedButton("Restore", on_click=import_data)
+            ElevatedButton("+ नवीन", on_click=add_new_person),
+            ElevatedButton("बॅकअप", on_click=export_data),
+            ElevatedButton("रिस्टोर", on_click=import_data)
         ],
         alignment=MainAxisAlignment.CENTER,
         wrap=True
@@ -271,8 +278,8 @@ def main(page: Page):
     people_container = Column(horizontal_alignment=CrossAxisAlignment.CENTER)
 
     person_title = Text("", size=22, weight="bold")
-    desc_input = TextField(label="Note (optional)", width=200)
-    amt_input = TextField(label="Amt", width=100, keyboard_type="number")
+    desc_input = TextField(label="नोंद (ऐच्छिक)", width=200)
+    amt_input = TextField(label="रक्कम", width=100, keyboard_type="number")
     type_dropdown = Dropdown(
         value="1",
         width=80,
@@ -285,12 +292,12 @@ def main(page: Page):
     
     ledger_table = DataTable(
         columns=[
-            DataColumn(Text("Date")),
-            DataColumn(Text("Note")),
+            DataColumn(Text("दिनांक")),
+            DataColumn(Text("नोंद")),
             DataColumn(Text("+")),
             DataColumn(Text("–")),
-            DataColumn(Text("Bal")),
-            DataColumn(Text("Del")),
+            DataColumn(Text("बॅलन्स")),
+            DataColumn(Text("कट")),
         ],
         rows=[]
     )
@@ -303,8 +310,8 @@ def main(page: Page):
                 person_title, 
                 IconButton(icon=icons.DELETE, icon_color=Colors.RED, on_click=lambda _: delete_person(current_person))
             ], alignment=MainAxisAlignment.CENTER),
-            Row([desc_input, amt_input, type_dropdown, ElevatedButton("Add", on_click=save_entry)], alignment=MainAxisAlignment.CENTER, wrap=True),
-            Row([Text("Balance: ", size=18), balance_summary], alignment=MainAxisAlignment.CENTER),
+            Row([desc_input, amt_input, type_dropdown, ElevatedButton("ऐड करा", on_click=save_entry)], alignment=MainAxisAlignment.CENTER, wrap=True),
+            Row([Text("एकूण शिल्लक: ", size=18), balance_summary], alignment=MainAxisAlignment.CENTER),
             Container(content=ledger_table, overflow_x=ScrollMode.AUTO)
         ]
     )
@@ -312,7 +319,7 @@ def main(page: Page):
     page.add(
         Column(
             controls=[
-                Text("Simple Ledger", size=28, weight="bold"),
+                Text("सिंपल लेजर (Simple Ledger)", size=28, weight="bold"),
                 top_bar,
                 Container(height=1, bgcolor=Colors.GREY_300),
                 people_container,
