@@ -15,18 +15,26 @@ def main(page: Page):
 
     # State variables
     current_person = None
-    
-    # Fetch initial ledger data from client storage
-    if page.client_storage.contains_key("ledger"):
-        try:
-            ledger_data = json.loads(page.client_storage.get("ledger"))
-        except:
-            ledger_data = {}
-    else:
-        ledger_data = {}
+    ledger_data = {}
+
+    # सुरक्षितपणे डेटा लोड करण्यासाठी ट्राय-एक्सेप्ट (Try-Except) ब्लॉक
+    try:
+        if page.client_storage and page.client_storage.contains_key("ledger"):
+            val = page.client_storage.get("ledger")
+            if val:
+                ledger_data = json.loads(val)
+    except Exception as e:
+        # जर काही एरर आली तर ती स्क्रीनवर दिसेल, ब्लँक स्क्रीन राहणार नाही
+        page.add(Text(f"Storage Error: {str(e)}", color=Colors.RED))
+        page.update()
 
     def save_to_storage():
-        page.client_storage.set("ledger", json.dumps(ledger_data))
+        try:
+            page.client_storage.set("ledger", json.dumps(ledger_data))
+        except Exception as e:
+            page.snack_bar = AlertDialog(title=Text(f"Save Error: {str(e)}"))
+            page.snack_bar.open = True
+            page.update()
 
     def get_balance(name):
         entries = ledger_data.get(name, [])
@@ -36,7 +44,6 @@ def main(page: Page):
         return f"₹{round(n)}"
 
     # --- UI Event Handlers ---
-    
     def on_search_change(e):
         update_people_list()
 
@@ -143,8 +150,7 @@ def main(page: Page):
             render_person_ledger()
             update_people_list()
 
-    # --- Backup & Restore Handlers ---
-    
+    # --- Backup & Restore ---
     def export_data(e):
         if not ledger_data:
             return
@@ -181,7 +187,6 @@ def main(page: Page):
     page.overlay.extend([file_picker_export, file_picker_import])
 
     # --- UI Rendering Functions ---
-
     def update_people_list():
         query = search_input.value.lower().strip()
         people_container.controls.clear()
@@ -194,7 +199,7 @@ def main(page: Page):
             keys.sort(key=lambda k: -get_balance(k))
 
         if not keys:
-            people_container.controls.append(Text("No matches or no records yet", italic=True))
+            people_container.controls.append(Text("No records yet", italic=True))
         else:
             for k in keys:
                 b = get_balance(k)
@@ -250,8 +255,7 @@ def main(page: Page):
         balance_summary.color = Colors.GREEN if running_bal >= 0 else Colors.RED
         page.update()
 
-    # --- UI Architecture Layout ---
-    
+    # --- UI Layout ---
     search_input = TextField(label="Search name...", size=30, autofocus=True, on_change=on_search_change)
     top_bar = Row(
         controls=[
