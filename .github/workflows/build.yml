@@ -34,8 +34,8 @@ jobs:
 
       - name: Run Build Package
         run: |
-          # --debug फ्लॅगमुळे ॲप क्रॅश न होता एरर थेट स्क्रीनवर दाखवेल
-          echo "y" | flet build apk --debug
+          # Flet च्या नवीन व्हर्जनमध्ये डिबग बिल्डसाठी 'build apk' ऐवजी फक्त 'build apk' वापरून आतून मॅनेज करावे लागते
+          echo "y" | flet build apk
 
       - name: Upload Finished APK Artifact
         uses: actions/upload-artifact@v4
