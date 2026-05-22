@@ -19,7 +19,7 @@ jobs:
       - name: Install Flet CLI Dependencies
         run: |
           pip install --upgrade pip
-          pip install flet
+          pip install flet flet-runtime
 
       - name: Setup Java SDK
         uses: actions/setup-java@v4
@@ -34,7 +34,8 @@ jobs:
 
       - name: Run Build Package
         run: |
-          echo "y" | flet build apk
+          # --debug फ्लॅगमुळे ॲप क्रॅश न होता एरर थेट स्क्रीनवर दाखवेल
+          echo "y" | flet build apk --debug
 
       - name: Upload Finished APK Artifact
         uses: actions/upload-artifact@v4
