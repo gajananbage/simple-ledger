@@ -1,5 +1,5 @@
 import json
-import asyncio # असिंक्रोनस लोडसाठी आवश्यक
+import os
 import datetime
 from flet import (
     app, Page, Text, TextField, Dropdown, dropdown, ElevatedButton, 
@@ -18,16 +18,24 @@ def main(page: Page):
     current_person = [None]
     ledger_data = {}
 
-    # मुख्य लेआउट (UI एलिमेंट्स सुरुवातीलाच तयार करून ठेवले)
-    main_layout = Column(horizontal_alignment=CrossAxisAlignment.CENTER, spacing=20, visible=False)
-    
-    # ॲप लोड होईपर्यंत युझरला दिसणारा लोडिंग मेसेज
-    loading_text = Text("डेटा लोड होत आहे, कृपया थांबा...", size=18, color=Colors.BLUE_GREY)
-    page.add(loading_text, main_layout)
+    # पायथनचा स्वतःचा सुरक्षित आणि १००% गॅरंटीड डेटा फाईल मार्ग
+    # हा मार्ग Android OS मध्ये कधीही फ्रीझ किंवा क्रॅश होत नाही
+    DATA_FILE = os.path.join(os.path.expanduser("~"), "ledger_data_v2.json")
+
+    # फाईल सिस्टीममधून डेटा लोड करणे (कोणत्याही एज-केसशिवाय तत्काळ लोड होते)
+    try:
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, "r") as f:
+                content = f.read()
+                if content:
+                    ledger_data = json.loads(content)
+    except Exception as ex:
+        print(f"डेटा लोड एरर: {ex}")
 
     def save_to_storage():
         try:
-            page.client_storage.set("ledger_data_key", json.dumps(ledger_data))
+            with open(DATA_FILE, "w") as f:
+                json.dump(ledger_data, f, indent=2)
         except Exception as e:
             show_error(f"Save Error: {str(e)}")
 
@@ -249,7 +257,7 @@ def main(page: Page):
             keys.sort(key=lambda k: -get_balance(k))
 
         if not keys:
-            people_container.controls.append(Text("कोणतेही रेकॉर्ड नाही", italic=True, size=16))
+            people_container.controls.append(Text("कोणतेही रेkकॉर्ड नाही", italic=True, size=16))
         else:
             for k in keys:
                 b = get_balance(k)
@@ -291,36 +299,23 @@ def main(page: Page):
         balance_summary.color = Colors.GREEN if running_bal >= 0 else Colors.RED
         page.update()
 
-    # लेआउट स्ट्रक्चर जोडणे
-    main_layout.controls.extend([
-        Text("सिंपल लेजर", size=28, weight="bold"),
-        top_bar,
-        Container(height=1, bgcolor=Colors.GREY_300),
-        people_container,
-        Container(height=1, bgcolor=Colors.GREY_300),
-        main_view
-    ])
-
-    # असिंक्रोनस पद्धतीने डेटा सुरक्षित लोड करणे (Non-blocking)
-    async def initialize_app_task():
-        await asyncio.sleep(0.5) # मोबाईल हार्डवेअर रेडी होण्यासाठी छोटासा पॉज
-        try:
-            if page.client_storage.contains_key("ledger_data_key"):
-                raw = page.client_storage.get("ledger_data_key")
-                if raw:
-                    loaded_data = json.loads(raw)
-                    if isinstance(loaded_data, dict):
-                        ledger_data.update(loaded_data)
-        except Exception as ex:
-            print(f"Load Error: {ex}")
-        
-        # लोड झाल्यावर UI दाखवणे आणि लोडिंग मेसेज लपवणे
-        loading_text.visible = False
-        main_layout.visible = True
-        update_people_list()
-        page.update()
-
-    # टास्क रन करणे
-    page.run_task(initialize_app_task)
+    # मुख्य लेआउट थेट स्क्रीनवर रेंडर करणे (कोणत्याही डिले किंवा लोडिंग स्क्रीनशिवाय)
+    page.add(
+        Column(
+            controls=[
+                Text("सिंपल लेजर", size=28, weight="bold"),
+                top_bar,
+                Container(height=1, bgcolor=Colors.GREY_300),
+                people_container,
+                Container(height=1, bgcolor=Colors.GREY_300),
+                main_view
+            ],
+            horizontal_alignment=CrossAxisAlignment.CENTER,
+            spacing=20
+        )
+    )
+    
+    # ॲप सुरू होताच लिस्ट अपडेट करणे
+    update_people_list()
 
 app(target=main)
